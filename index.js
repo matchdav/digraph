@@ -8,6 +8,8 @@ var Id = require('objectid'),
 
 function GraphNode(data){
 	var id = data.id || new Id();
+	var label = data.label || false;
+	if(label) this.label = label;
 	if(data.id) data.id = undefined;
 	this.id = id;
 	this.data = data;
@@ -137,26 +139,26 @@ function bfs(G,origin, destination) {
 	return false;
 }
 
-Graph.prototype.cyclic = function(n) {
-	dfs(this,n);
-	return n.visited > 1;
-}
 
-Graph.prototype.loopsAt = function(){
-	for (var i = this.nodes.length - 1; i >= 0; i--) {
-		if(this.nodes[i].visited && this.nodes[i].visited > 1 ) {
-			return this.nodes[i];
-		}
-	};
-	return undefined;
-};
+
+
 
 Graph.prototype.__acyclic = false;
 
-Graph.prototype.add = function(obj) {
+Graph.prototype.add = function(obj, label) {
 	var node;
 	if(obj instanceof GraphNode) node = obj;
 	else node = new GraphNode(obj);
+
+	/*Ensure unique labels*/
+	if(label) {
+		var n; 
+		if(!n = this.findByLabel(label)) {
+			node.label = label;
+		} else {
+			console.error('The label \''+label+'\' is already taken.',n);	
+		}
+	}
 
 	if (!this.has(node)) this.nodes.push(node);
 
@@ -175,12 +177,13 @@ Graph.prototype.connect = function(source,target,transition) {
 	return this;
 };
 
-Graph.prototype.untraverse = function() {
-	for (var i = this.nodes.length - 1; i >= 0; i--) {
-		this.nodes[i].visited = false;
-	};
-	return this;
-}
+Graph.prototype.cyclic = function(n) {
+	var start = n || (this.nodes.length > 0 && this.nodes[0]);
+	dfs(this,start);
+	return start.visited > 1;
+};
+
+Graph.prototype.hasCycle = Graph.prototype.cyclic;
 
 Graph.prototype.find = function (conditions) {
 	return find(this.nodes, function(node){
@@ -194,6 +197,10 @@ Graph.prototype.find = function (conditions) {
 	});
 };
 
+Graph.prototype.findByLabel = function(label) {
+	return this.find({label:label});
+};
+
 Graph.prototype.has = function(node) {
 	for (var i = this.nodes.length - 1; i >= 0; i--) {
 		if(this.nodes[i].id === node.id) return node;
@@ -201,8 +208,14 @@ Graph.prototype.has = function(node) {
 	return false;
 };
 
-Graph.prototype.toJSON = function() {
-	return JSON.stringify(this);
+
+Graph.prototype.loopsAt = function(){
+	for (var i = this.nodes.length - 1; i >= 0; i--) {
+		if(this.nodes[i].visited && this.nodes[i].visited > 1 ) {
+			return this.nodes[i];
+		}
+	};
+	return undefined;
 };
 
 Graph.prototype.node = function(id) {
@@ -234,6 +247,17 @@ Graph.prototype.remove = function(node) {
 
 Graph.prototype.size = function() {
 	return this.nodes.length;
-}
+};
+
+Graph.prototype.toJSON = function() {
+	return JSON.stringify(this);
+};
+
+Graph.prototype.untraverse = function() {
+	for (var i = this.nodes.length - 1; i >= 0; i--) {
+		this.nodes[i].visited = false;
+	};
+	return this;
+};
 
 module.exports = Graph;
