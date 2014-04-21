@@ -37,13 +37,9 @@ GraphNode.prototype.branch = function (target, transition) {
 	return this;
 };
 
-GraphNode.prototype.outDegree = function(){
+GraphNode.prototype.fanout = function(){
 	return this.branches().length;
 };
-
-GraphNode.prototype.inDegree = function() {
-
-}
 
 GraphNode.prototype.branches = function() {
 	return this.__branches;
@@ -101,8 +97,13 @@ function isGraph(g){
  */
 function dfs(G, v) {
 	var key, branches = v.branches(), n;
+	var node = G.node(v.id);
 	if(v.visited) { 
+		v.visited++;
 		return G;
+	}
+	else {
+
 	}
 	v.visited = 1;
 	for(key in branches) {
@@ -138,9 +139,17 @@ function bfs(G,origin, destination) {
 
 Graph.prototype.cyclic = function(n) {
 	dfs(this,n);
+	return n.visited > 1;
 }
 
-
+Graph.prototype.loopsAt = function(){
+	for (var i = this.nodes.length - 1; i >= 0; i--) {
+		if(this.nodes[i].visited && this.nodes[i].visited > 1 ) {
+			return this.nodes[i];
+		}
+	};
+	return undefined;
+};
 
 Graph.prototype.__acyclic = false;
 

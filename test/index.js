@@ -24,4 +24,16 @@ describe('Graph(object)',function(){
 		should.exist(g.pathBetween(r,dog));
 		(g.pathBetween(r,lone)).should.be.false;
 	});
+	it('#disconnect should unhook two nodes',function(){
+
+	});
+	it('#cycle should detect cycles correctly',function(){
+		var g = new Graph();
+		var r = g.add('r');
+		var b = g.add('b');
+		g.connect(r,b,1);
+		(g.cyclic(r)).should.be.false;
+		g.connect(b,r,2);
+		(g.cyclic(r)).should.not.be.false;
+	});
 });
