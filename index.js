@@ -6,7 +6,7 @@ var Id = require('objectid'),
 
 
 
-function GraphNode(data){
+function Vertex(data){
 	var id = data.id || new Id();
 	var label = data.label || false;
 	if(label) this.label = label;
@@ -17,37 +17,47 @@ function GraphNode(data){
 }
 
 function isNode(n) {
-	return n instanceof GraphNode;
+	return n instanceof Vertex;
 }
+Vertex.prototype.findBranch = function(id) {
+	var branches = this.branches();
+	for (var i = branches.length - 1; i >= 0; i--) {
+		if(branches[i].id===id){
+			return branches[i];
+		}
+	};
+};
 
-GraphNode.prototype.branch = function (target, transition) {
+Vertex.prototype.branch = function (target, label) {
 	var branch = clone(target);
 	delete branch.__branches;
 	branch.id = target.id;
-	branch.transition = transition;
-	if(!transition || !transition instanceof String) {
-		throw new Error('GraphNode#path expects a transition.');
+	branch.label = label;
+	if(!label || !label instanceof String) {
+		throw new Error('Vertex#path expects a label.');
 	}
-	if(!target instanceof GraphNode) {
-		throw new Error('GraphNode#path Expects a GraphNode.');
+	if(!target instanceof Vertex) {
+		throw new Error('Vertex#path Expects a Vertex.');
 	}
-	if(!this.hasTransition(transition)) {
+	if(!this.hasTransition(label)) {
 		this.__branches.push(branch);
 	} else {
-		console.error('Could not add ',target,'transition already exists.');
+		console.error('Could not add ',target,'label already exists.');
 	}
 	return this;
 };
 
-GraphNode.prototype.fanout = function(){
+Vertex.prototype.fanout = function(){
 	return this.branches().length;
 };
 
-GraphNode.prototype.branches = function() {
+Vertex.prototype.outDegree = Vertex.prototype.fanout;
+
+Vertex.prototype.branches = function() {
 	return this.__branches;
 };
 
-GraphNode.prototype.adjacentTo = function(target) {
+Vertex.prototype.adjacentTo = function(target) {
 	if (!isNode(target)) return false;
 	for (var i = this.__branches.length - 1; i >= 0; i--) {
 		if(this.__branches[i].id === target.id) return target;
@@ -55,27 +65,41 @@ GraphNode.prototype.adjacentTo = function(target) {
 	return false;
 };
 
-GraphNode.prototype.hasTransition = function(transition) {
+Vertex.prototype.hasTransition = function(label) {
 	for (var i = this.__branches.length - 1; i >= 0; i--) {
-		if (this.__branches[i].transition && this.__branches[i].transition === transition) return true;
+		if (this.__branches[i].label && this.__branches[i].label === label) return true;
 	};
 	return false;
 }
 
 
+function Edge ( origin, destination, label ) {
+	this.__origin = origin;
+	this.__destination = destination;
+	this.__label = label;
+}
+Edge.prototype.source = Edge.prototype.origin = function(){
+	return this.__origin;
+};
+
+Edge.prototype.source = function(){
+	return this.__origin;
+};
 
 
 /**
  * Graph constructor
+ * @param {Object} options a hash of options
  */
 function Graph(options){
 	var key;
-	this.nodes=[];
+	this.__vertices=[];
 	if(options && options.acyclic) {
 		this.__acyclic = true;
 		delete options.acyclic;
 	}
 	this.options = {};
+	this.__edges = [];
 	for(key in options) {
 		this.options[key]=options[key];
 	}
@@ -92,46 +116,50 @@ function isGraph(g){
 
 
 /**
- * Recursively visit nodes and mark as visited
+ * Recursively visit vertexs and mark as visited
  * @param  {Graph} G the graph to search
- * @param  {GraphNode} v Starting point (any will typically work)
+ * @param  {Vertex} v Starting point (any will typically work)
  * @return {Graph}   the modified graph with visited vertices marked.
+ * @api private
  */
-function dfs(G, v) {
+function DFS(G, v) {
 	var key, branches = v.branches(), n;
-	var node = G.node(v.id);
+	var vertex = G.vertex(v.id);
 	if(v.visited) { 
 		v.visited++;
 		return G;
-	}
-	else {
-
-	}
+	} 
 	v.visited = 1;
 	for(key in branches) {
-		n = G.node(branches[key].id);
-		dfs(G,n);
+		n = G.vertex(branches[key].id);
+		DFS(G,n);
 	}
 	return G;
 }
 
-function bfs(G,origin, destination) {
+/**
+ * Find a path between 2 vertexs in a graph
+ * @param {Graph} G           the input graph
+ * @param {Vertex} origin      [description]
+ * @param {[type]} destination [description]
+ */
+function BFS(G, origin, destination) {
 	var Q = [];
 	var V = [];
-	var intermediate, branches, node;
+	var intermediate, branches, vertex;
 	Q.unshift(origin);
 	V.push(origin);
 	while(Q.length!==0) {
 		intermediate = Q.shift();
 		if(intermediate.id == destination.id) {
-			return V;
+			return Path(V);
 		} else {
 			branches = intermediate.branches();
 			for (var i = branches.length - 1; i >= 0; i--) {
-				node = G.node(branches[i].id);
-				if(indexOf(V,node) === -1) {
-					V.push(node);
-					Q.unshift(node);
+				vertex = G.vertex(branches[i].id);
+				if(indexOf(V,vertex) === -1) {
+					V.push(vertex);
+					Q.unshift(vertex);
 				}
 			};
 		}
@@ -140,29 +168,40 @@ function bfs(G,origin, destination) {
 }
 
 
-
-
+/**
+ * Build a path from the list of vertices
+ * @param {Array} vertices 
+ */
+function Path(vertices){
+	var path = [], prev, next;
+	for (var i = vertices.length - 1; i > 0; i--) {
+		prev = vertices[i-1],next = vertices[i],label = prev.findBranch(next.id).label;
+		var e = new Edge(prev.id, next.id, label); 
+		path.unshift(e);
+	};
+	return path;
+}
 
 Graph.prototype.__acyclic = false;
 
 Graph.prototype.add = function(obj, label) {
-	var node;
-	if(obj instanceof GraphNode) node = obj;
-	else node = new GraphNode(obj);
+	var vertex;
+	if(obj instanceof Vertex) vertex = obj;
+	else vertex = new Vertex(obj);
 
 	/*Ensure unique labels*/
 	if(label) {
 		var n; 
 		if(!n = this.findByLabel(label)) {
-			node.label = label;
+			vertex.label = label;
 		} else {
 			console.error('The label \''+label+'\' is already taken.',n);	
 		}
 	}
 
-	if (!this.has(node)) this.nodes.push(node);
+	if (!this.has(vertex)) this.__vertices.push(vertex);
 
-	return node;
+	return vertex;
 };
 
 Graph.prototype.adjacent = function (source, target) {
@@ -170,30 +209,30 @@ Graph.prototype.adjacent = function (source, target) {
 	return source.adjacentTo(target) || target.adjacentTo(source);
 };
 
-Graph.prototype.connect = function(source,target,transition) {
-	if( !(isNode(source) && isNode(target)) ) throw new Error('Graph#connect expects a source GraphNode and a target GraphNode.');
-	if(!transition) throw new Error('Graph#connect expects a valid transition identifier.');
-	source.branch(target, transition);
+Graph.prototype.connect = function(source,target,label) {
+	if( !(isNode(source) && isNode(target)) ) throw new Error('Graph#connect expects a source Vertex and a target Vertex.');
+	if(!label) throw new Error('Graph#connect expects a valid label identifier.');
+	source.branch(target, label);
 	return this;
 };
 
 Graph.prototype.cyclic = function(n) {
-	var start = n || (this.nodes.length > 0 && this.nodes[0]);
-	dfs(this,start);
+	var start = n || (this.__vertices.length > 0 && this.__vertices[0]);
+	DFS(this,start);
 	return start.visited > 1;
 };
 
 Graph.prototype.hasCycle = Graph.prototype.cyclic;
 
 Graph.prototype.find = function (conditions) {
-	return find(this.nodes, function(node){
+	return find(this.__vertices, function(vertex){
 		var i;
 		for(i in conditions) {
-			if(node[i]!=conditions[i]) {
+			if(vertex[i]!=conditions[i]) {
 				return false;
 			}
 		}
-		return node;
+		return vertex;
 	});
 };
 
@@ -201,52 +240,52 @@ Graph.prototype.findByLabel = function(label) {
 	return this.find({label:label});
 };
 
-Graph.prototype.has = function(node) {
-	for (var i = this.nodes.length - 1; i >= 0; i--) {
-		if(this.nodes[i].id === node.id) return node;
+Graph.prototype.has = function(vertex) {
+	for (var i = this.__vertices.length - 1; i >= 0; i--) {
+		if(this.__vertices[i].id === vertex.id) return vertex;
 	};
 	return false;
 };
 
 
 Graph.prototype.loopsAt = function(){
-	for (var i = this.nodes.length - 1; i >= 0; i--) {
-		if(this.nodes[i].visited && this.nodes[i].visited > 1 ) {
-			return this.nodes[i];
+	for (var i = this.__vertices.length - 1; i >= 0; i--) {
+		if(this.__vertices[i].visited && this.__vertices[i].visited > 1 ) {
+			return this.__vertices[i];
 		}
 	};
 	return undefined;
 };
 
-Graph.prototype.node = function(id) {
-	for (var i = this.nodes.length - 1; i >= 0; i--) {
-		if(this.nodes[i].id === id) return this.nodes[i];
+Graph.prototype.vertex = function(id) {
+	for (var i = this.__vertices.length - 1; i >= 0; i--) {
+		if(this.__vertices[i].id === id) return this.__vertices[i];
 	};
 	return false;
 };
 
 Graph.prototype.pathBetween = function ( a, b ) {
 	this.untraverse();
-	return bfs(this,a,b);
+	return BFS(this,a,b);
 };
 
-Graph.prototype.remove = function(node) {
-	var id = node.id;
-	if(!id) return console.error('node does not exist');
-	for (var i = this.nodes.length - 1; i >= 0; i--) {
-		var branches = this.nodes[i].branches();
+Graph.prototype.remove = function(vertex) {
+	var id = vertex.id;
+	if(!id) return console.error('vertex does not exist');
+	for (var i = this.__vertices.length - 1; i >= 0; i--) {
+		var branches = this.__vertices[i].branches();
 		for (var i = branches.length - 1; i >= 0; i--) {
 			if (branches[i].id ===id) {
 				branches.splice(i,1);
 			}
 		};
-		var key = indexOf(this.nodes,node);
-		this.nodes.splice(key, 1);
+		var key = indexOf(this.__vertices,vertex);
+		this.__vertices.splice(key, 1);
 	};
 };
 
 Graph.prototype.size = function() {
-	return this.nodes.length;
+	return this.__vertices.length;
 };
 
 Graph.prototype.toJSON = function() {
@@ -254,10 +293,13 @@ Graph.prototype.toJSON = function() {
 };
 
 Graph.prototype.untraverse = function() {
-	for (var i = this.nodes.length - 1; i >= 0; i--) {
-		this.nodes[i].visited = false;
+	for (var i = this.__vertices.length - 1; i >= 0; i--) {
+		this.__vertices[i].visited = false;
 	};
 	return this;
 };
+
+Graph.Edge = Edge;
+Graph.Node = Vertex;
 
 module.exports = Graph;

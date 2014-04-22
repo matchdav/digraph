@@ -6,10 +6,10 @@ describe('Graph(object)',function(){
 		var g = new Graph();
 		should.exist(g);
 	});
-	it('should add nodes to the graph',function(){
+	it('should add vertices to the graph',function(){
 		var g = new Graph();
 		g.add('rabbit');
-		g.nodes.length.should.equal(1);
+		g.__vertices.length.should.equal(1);
 	});
 	it('#size should be defined',function(){
 		var g = new Graph;
@@ -21,10 +21,12 @@ describe('Graph(object)',function(){
 		var lone = g.add('alone');
 		g.connect(r,dog,'anger');
 		should.exist(g.pathBetween);
-		should.exist(g.pathBetween(r,dog));
+		var path = g.pathBetween(r,dog);
+		console.log('path is ',path);
+		should.exist(path);
 		(g.pathBetween(r,lone)).should.be.false;
 	});
-	it('#disconnect should unhook two nodes',function(){
+	it('#disconnect should unhook two vertexs',function(){
 
 	});
 	it('#cycle should detect cycles correctly',function(){
@@ -36,4 +38,8 @@ describe('Graph(object)',function(){
 		g.connect(b,r,2);
 		(g.cyclic(r)).should.not.be.false;
 	});
+	it('should be chainable',function(){
+		var g = new Graph().add({name:'roger'});
+	});
+
 });
