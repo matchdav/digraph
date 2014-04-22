@@ -21,14 +21,14 @@
   },
   "homepage": "https://github.com/matchdav/digraph",
   "devDependencies": {
-    "should": "^3.3.1"
+    "should": "*",
+    "express": "^4.0.0"
   },
   "dependencies": {
-    "find": "0.0.1",
-    "objectid": "^3.1.0",
-    "each": "^0.4.9",
-    "clone": "^0.1.11",
-    "indexof": "0.0.1",
-    "queue-component": "git://github.com/component/queue"
+    "find": "*",
+    "objectid": "*",
+    "each": "*",
+    "clone": "*",
+    "indexof": "*"
   }
 }

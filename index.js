@@ -7,11 +7,9 @@ var Id = require('objectid'),
 
 
 function Vertex(data){
-	var id = data.id || new Id();
+	this.id = data.id || Id();
 	var label = data.label || false;
-	if(label) this.label = label;
-	if(data.id) data.id = undefined;
-	this.id = id;
+	if(label) this.label = label;	
 	this.data = data;
 	if(!this.__branches) this.__branches = [];
 }
@@ -82,8 +80,8 @@ Edge.prototype.source = Edge.prototype.origin = function(){
 	return this.__origin;
 };
 
-Edge.prototype.source = function(){
-	return this.__origin;
+Edge.prototype.target = function(){
+	return this.__destination;
 };
 
 

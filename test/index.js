@@ -1,12 +1,27 @@
-var Graph = require('..');
+require('mocha');
+
+
+
+
+
+(function(){
+var chai = require('chai');	
+chai.should();	
+mocha.setup('bdd');
+
+var Graph = require('digraph');
 var Edge = Graph.Edge;
-var Vertex = Graph.Vertex;
-var should = require('should');
+var Vertex = Graph.Vertex;	
 
 describe('Graph(object)',function(){
+	before(function(done){
+		this.timeout(3000);
+		done();
+	})
+	
 	it('should exist',function(){
 		var g = new Graph();
-		should.exist(g);
+		g.should.exist;
 	});
 	it('should add vertices to the graph',function(){
 		var g = new Graph();
@@ -33,9 +48,36 @@ describe('Graph(object)',function(){
 		h.should.equal(g);
 
 	});
-	it('Vertex(object) should have type Vertex.',function(){
-		var v = new Vertex('angry bunny');
-		should.exist(v);
-	});
 	
+	it('new Edge() should be instanceof Edge',function(){
+		var e = new Edge;
+		e.should.be.instanceof.Edge;
+	});
+		
 });
+describe('Vertex',function(){
+	it('should have type Vertex.',function(){
+		var v = new Vertex('angry bunny');
+		v.should.not.be.null;
+		v.should.be.instanceof.Vertex;
+	});
+	it('should have an id.',function(){
+		var v = new Vertex('angry bunny');
+		v.should.have.property('id');
+	});
+});
+
+describe('Edge',function(){
+	it('should be an Edge',function(){
+		var v = new Vertex('v'),
+			w = new Vertex('w'),
+			e = new Edge(v,w,'white label');
+		e.should.be.instanceof.Edge;
+		e.should.have.property('source');
+	});
+});
+
+mocha.run();
+})();
+
+

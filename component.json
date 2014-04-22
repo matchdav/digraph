@@ -8,7 +8,9 @@
     "matchdav/objectid": "*",
     "component/indexof": "0.0.3",
     "component/each": "0.2.3",
-    "component/queue": "*"
+    "component/queue": "*",
+    "visionmedia/mocha": "*",
+    "chaijs/chai": "*"
   },
   "development": {},
   "main": "index.js",
