@@ -201,7 +201,7 @@ Graph.prototype.add = function(obj, label) {
 
 	if (!this.has(vertex)) this.__vertices.push(vertex);
 
-	return vertex;
+	return this;
 };
 
 Graph.prototype.adjacent = function (source, target) {
@@ -300,6 +300,6 @@ Graph.prototype.untraverse = function() {
 };
 
 Graph.Edge = Edge;
-Graph.Node = Vertex;
+Graph.Vertex = Vertex;
 
 module.exports = Graph;

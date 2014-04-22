@@ -1,4 +1,6 @@
 var Graph = require('..');
+var Edge = Graph.Edge;
+var Vertex = Graph.Vertex;
 var should = require('should');
 
 describe('Graph(object)',function(){
@@ -15,31 +17,25 @@ describe('Graph(object)',function(){
 		var g = new Graph;
 		g.should.have.property('size');
 	});
-	it('#pathBetween should return a connected path if one exists',function(){
-		var g = new Graph;
-		var r = g.add('rabbit'),dog = g.add('dog');
-		var lone = g.add('alone');
-		g.connect(r,dog,'anger');
-		should.exist(g.pathBetween);
-		var path = g.pathBetween(r,dog);
-		console.log('path is ',path);
-		should.exist(path);
-		(g.pathBetween(r,lone)).should.be.false;
-	});
-	it('#disconnect should unhook two vertexs',function(){
-
-	});
 	it('#cycle should detect cycles correctly',function(){
 		var g = new Graph();
-		var r = g.add('r');
-		var b = g.add('b');
+		var r = new Vertex('r');
+		var b = new Vertex('b');
+		g.add(r).add(b);
 		g.connect(r,b,1);
 		(g.cyclic(r)).should.be.false;
 		g.connect(b,r,2);
 		(g.cyclic(r)).should.not.be.false;
 	});
 	it('should be chainable',function(){
-		var g = new Graph().add({name:'roger'});
-	});
+		var g = new Graph();
+		var h = g.add({name:'roger'});
+		h.should.equal(g);
 
+	});
+	it('Vertex(object) should have type Vertex.',function(){
+		var v = new Vertex('angry bunny');
+		should.exist(v);
+	});
+	
 });
