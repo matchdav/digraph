@@ -3,11 +3,11 @@
   "description": "simple directed graph.",
   "repo": "matchdav/digraph",
   "dependencies": {
-    "component/clone": "0.2.2",
-    "component/find": "0.0.1",
+    "component/clone": "*",
+    "component/find": "*",
     "matchdav/objectid": "*",
-    "component/indexof": "0.0.3",
-    "component/each": "0.2.3",
+    "component/indexof": "*",
+    "component/each": "*",
     "component/queue": "*",
     "visionmedia/mocha": "*",
     "chaijs/chai": "*"
