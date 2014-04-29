@@ -8,11 +8,12 @@
     "matchdav/objectid": "*",
     "component/indexof": "*",
     "component/each": "*",
-    "component/queue": "*",
+    "component/queue": "*"
+  },
+  "development": {
     "visionmedia/mocha": "*",
     "chaijs/chai": "*"
   },
-  "development": {},
   "main": "index.js",
   "scripts": [
     "index.js"
