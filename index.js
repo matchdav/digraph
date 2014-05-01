@@ -5,13 +5,17 @@ var Id = require('objectid'),
 	find = require('find');
 
 
-
+/**
+ * Vertex constructor
+ * @param {Object} data any old data.
+ */
 function Vertex(data){
 	this.id = data.id || Id();
 	var label = data.label || false;
 	if(label) this.label = label;	
 	this.data = data;
-	if(!this.__branches) this.__branches = [];
+	if(!this.__outbranches) this.__outbranches = [];
+	if(!this.__inbranches) this.__inbranches = [];
 }
 
 function isNode(n) {
@@ -26,62 +30,95 @@ Vertex.prototype.findBranch = function(id) {
 	};
 };
 
-Vertex.prototype.branch = function (target, label) {
-	var branch = clone(target);
-	delete branch.__branches;
-	branch.id = target.id;
-	branch.label = label;
+Vertex.prototype.branchOut = function (target, label) {
 	if(!label || !label instanceof String) {
 		throw new Error('Vertex#path expects a label.');
 	}
 	if(!target instanceof Vertex) {
 		throw new Error('Vertex#path Expects a Vertex.');
 	}
+	var branch = { id:target.id, label:target.label };
 	if(!this.hasTransition(label)) {
-		this.__branches.push(branch);
+		this.__outbranches.push(branch);
 	} else {
 		console.error('Could not add ',target,'label already exists.');
 	}
 	return this;
 };
 
+Vertex.prototype.branchIn = function (chaser, label) {
+	if(!label || !label instanceof String) {
+		throw new Error('Vertex#path expects a label.');
+	}
+	if(!chaser instanceof Vertex) {
+		throw new Error('Vertex#path Expects a Vertex.');
+	}
+	var incoming = { id:chaser.id, label:chaser.label };
+	this.__inbranches.push(incoming);
+	return this;
+};
+
 Vertex.prototype.fanout = function(){
 	return this.branches().length;
+};
+Vertex.prototype.fanin = function(){
+	return this.incomings().length;
 };
 
 Vertex.prototype.outDegree = Vertex.prototype.fanout;
 
 Vertex.prototype.branches = function() {
-	return this.__branches;
+	return this.__outbranches;
 };
+
+
+Vertex.prototype.incomings = function() {
+	return this.__inbranches;
+};
+
+Vertex.prototype.outBranches = Vertex.prototype.branches;
+Vertex.prototype.inBranches = Vertex.prototype.incomings;
 
 Vertex.prototype.adjacentTo = function(target) {
 	if (!isNode(target)) return false;
-	for (var i = this.__branches.length - 1; i >= 0; i--) {
-		if(this.__branches[i].id === target.id) return target;
+	for (var i = this.__outbranches.length - 1; i >= 0; i--) {
+		if(this.__outbranches[i].id === target.id) return target;
 	};
 	return false;
 };
 
 Vertex.prototype.hasTransition = function(label) {
-	for (var i = this.__branches.length - 1; i >= 0; i--) {
-		if (this.__branches[i].label && this.__branches[i].label === label) return true;
+	for (var i = this.__outbranches.length - 1; i >= 0; i--) {
+		if (this.__outbranches[i].label && this.__outbranches[i].label === label) return true;
 	};
 	return false;
 }
 
+
+/**
+ * Edge constructor
+ */
 
 function Edge ( origin, destination, label ) {
 	this.__origin = origin;
 	this.__destination = destination;
 	this.__label = label;
 }
+
+
+/*Return the starting vertext*/
 Edge.prototype.source = Edge.prototype.origin = function(){
 	return this.__origin;
 };
 
+/*Return the ending vertext*/
 Edge.prototype.target = function(){
 	return this.__destination;
+};
+
+/*return the label*/
+Edge.prototype.label = function(){
+	return this.__label;
 };
 
 
@@ -138,8 +175,8 @@ function DFS(G, v) {
 /**
  * Find a path between 2 vertexs in a graph
  * @param {Graph} G           the input graph
- * @param {Vertex} origin      [description]
- * @param {[type]} destination [description]
+ * @param {Vertex} origin      
+ * @param {Vertext} destination 
  */
 function BFS(G, origin, destination) {
 	var Q = [];
@@ -198,8 +235,9 @@ Graph.prototype.add = function(obj, label) {
 	}
 
 	if (!this.has(vertex)) this.__vertices.push(vertex);
-
-	return this;
+	
+	if(obj instanceof Vertex) return this;
+	else return vertex;
 };
 
 Graph.prototype.adjacent = function (source, target) {
@@ -207,10 +245,14 @@ Graph.prototype.adjacent = function (source, target) {
 	return source.adjacentTo(target) || target.adjacentTo(source);
 };
 
+Graph.prototype.disconnect = function(){}
+
 Graph.prototype.connect = function(source,target,label) {
 	if( !(isNode(source) && isNode(target)) ) throw new Error('Graph#connect expects a source Vertex and a target Vertex.');
 	if(!label) throw new Error('Graph#connect expects a valid label identifier.');
-	source.branch(target, label);
+	source.branchOut(target, label);
+	target.branchIn(source,label);
+	this.__edges.push(new Edge(source,target,label));
 	return this;
 };
 
@@ -271,10 +313,10 @@ Graph.prototype.remove = function(vertex) {
 	var id = vertex.id;
 	if(!id) return console.error('vertex does not exist');
 	for (var i = this.__vertices.length - 1; i >= 0; i--) {
-		var branches = this.__vertices[i].branches();
-		for (var i = branches.length - 1; i >= 0; i--) {
-			if (branches[i].id ===id) {
-				branches.splice(i,1);
+		var outBranches = this.__vertices[i].outBranches();
+		for (var i = outBranches.length - 1; i >= 0; i--) {
+			if (outBranches[i].id ===id) {
+				outBranches.splice(i,1);
 			}
 		};
 		var key = indexOf(this.__vertices,vertex);
@@ -282,7 +324,18 @@ Graph.prototype.remove = function(vertex) {
 	};
 };
 
-Graph.prototype.size = function() {
+Graph.prototype.removeEdge = function(source,target,label) {
+	for (var j = 0; j < this.__edges.length; j++) {
+		if (this.__edges[j].source()===source && this.__edges[j].target()===target && this.__edges[j].label()===label)
+			this.__edges.splice()
+	};
+};
+
+Graph.prototype.size = function(){
+	return this.__edges.length;
+}
+
+Graph.prototype.order = function() {
 	return this.__vertices.length;
 };
 
