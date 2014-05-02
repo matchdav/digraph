@@ -8,7 +8,9 @@
     "matchdav/objectid": "*",
     "component/indexof": "*",
     "component/each": "*",
-    "component/queue": "*"
+    "component/queue": "*",
+    "matchdav/inherits": "*",
+    "component/emitter": "1.1.2"
   },
   "development": {
     "visionmedia/mocha": "*",
