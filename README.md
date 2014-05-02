@@ -1,4 +1,3 @@
-
 # digraph
 
   simple directed graphs
@@ -11,7 +10,7 @@
 
 ## API
 
-
+Docs and tests coming soon.
 
 ## License
 
