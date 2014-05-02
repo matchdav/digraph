@@ -2,25 +2,35 @@ var Id = require('objectid'),
 	each = require('each'),
 	indexOf = require('indexof'),
 	clone = require('clone'),
-	find = require('find');
+	find = require('find'),
+	Emitter = require('emitter');
 
+var colors = ['red','blue','green','yellow'];
 
 /**
  * Vertex constructor
  * @param {Object} data any old data.
  */
-function Vertex(data){
+function Vertex(data,name){
 	this.id = data.id || Id();
-	var label = data.label || false;
-	if(label) this.label = label;	
+	var label = name || data.label || false;
+	if(label) this.label = label;
+	else this.label = data;
 	this.data = data;
+	console.log('created vertex,',this);
 	if(!this.__outbranches) this.__outbranches = [];
 	if(!this.__inbranches) this.__inbranches = [];
 }
 
+Emitter(Vertex.prototype);
+
 function isNode(n) {
 	return n instanceof Vertex;
 }
+function isEdge(e) {
+	return e instanceof Edge;
+}
+
 Vertex.prototype.findBranch = function(id) {
 	var branches = this.branches();
 	for (var i = branches.length - 1; i >= 0; i--) {
@@ -99,12 +109,14 @@ Vertex.prototype.hasTransition = function(label) {
  * Edge constructor
  */
 
-function Edge ( origin, destination, label ) {
+function Edge ( origin, destination, label , data) {
 	this.__origin = origin;
 	this.__destination = destination;
 	this.__label = label;
+	this.__data = data;
 }
 
+Emitter(Edge.prototype);
 
 /*Return the starting vertext*/
 Edge.prototype.source = Edge.prototype.origin = function(){
@@ -116,9 +128,13 @@ Edge.prototype.target = function(){
 	return this.__destination;
 };
 
-/*return the label*/
 Edge.prototype.label = function(){
 	return this.__label;
+}
+
+/*return the label*/
+Edge.prototype.data = function(){
+	return this.__data;
 };
 
 
@@ -139,6 +155,8 @@ function Graph(options){
 		this.options[key]=options[key];
 	}
 }
+
+Emitter(Graph.prototype);
 
 /**
  * type checking
@@ -227,7 +245,7 @@ Graph.prototype.add = function(obj, label) {
 	/*Ensure unique labels*/
 	if(label) {
 		var n; 
-		if(!n = this.findByLabel(label)) {
+		if(! (n = this.findVertexByLabel(label)) ) {
 			vertex.label = label;
 		} else {
 			console.error('The label \''+label+'\' is already taken.',n);	
@@ -235,7 +253,7 @@ Graph.prototype.add = function(obj, label) {
 	}
 
 	if (!this.has(vertex)) this.__vertices.push(vertex);
-	
+	this.emit('add:vertex',vertex);
 	if(obj instanceof Vertex) return this;
 	else return vertex;
 };
@@ -245,26 +263,65 @@ Graph.prototype.adjacent = function (source, target) {
 	return source.adjacentTo(target) || target.adjacentTo(source);
 };
 
-Graph.prototype.disconnect = function(){}
 
 Graph.prototype.connect = function(source,target,label) {
 	if( !(isNode(source) && isNode(target)) ) throw new Error('Graph#connect expects a source Vertex and a target Vertex.');
 	if(!label) throw new Error('Graph#connect expects a valid label identifier.');
 	source.branchOut(target, label);
 	target.branchIn(source,label);
-	this.__edges.push(new Edge(source,target,label));
+	if(this.edgeExists(source,target,label)) return this;
+	var edge = new Edge(source,target,label);
+	this.__edges.push(edge);
+	this.emit('add:edge',edge);
 	return this;
 };
 
+/**
+ * Whether or not a cycle exists given a starting vertex.
+ * @param  {Vertex} n 
+ * @return {Boolean}   
+ */
 Graph.prototype.cyclic = function(n) {
 	var start = n || (this.__vertices.length > 0 && this.__vertices[0]);
 	DFS(this,start);
 	return start.visited > 1;
 };
 
-Graph.prototype.hasCycle = Graph.prototype.cyclic;
+/**
+ * Remove edge, if it exists.
+ * @param  {Vertex} a     
+ * @param  {Vertex} b     
+ * @param  {String} label 
+ * @return {Graph}       
+ */
+Graph.prototype.disconnect = function(a,b,label){
+	return this;
+}
 
-Graph.prototype.find = function (conditions) {
+
+/**
+ * whether or not the edge already exists.
+ * @param  {Vertex} source vertex
+ * @param  {Vertex} target vertex
+ * @param  {String} label  the label of the transition
+ * @return {Boolean}        
+ */
+Graph.prototype.edgeExists = function(origin,destination,label) {
+	var edge;
+	console.log('edge checking');
+	for (var i = 0; i < this.__edges.length; i++) {
+		edge = this.__edges[i];
+		if(edge.__origin ===origin && edge.__destination ===destination && edge.__label ===label ) return true;
+	};
+	return false;
+};
+
+/**
+ * Find a vertex with the given query
+ * @param  {Object} conditions search query parameters
+ * @return {Vertex}            Vertex or false.
+ */
+Graph.prototype.findVertex = function (conditions) {
 	return find(this.__vertices, function(vertex){
 		var i;
 		for(i in conditions) {
@@ -276,10 +333,23 @@ Graph.prototype.find = function (conditions) {
 	});
 };
 
-Graph.prototype.findByLabel = function(label) {
-	return this.find({label:label});
+Graph.prototype.findVertexByLabel = function(label) {
+	return this.findVertex({label:label});
 };
 
+Graph.prototype.findVertexById = function(id) {
+	for (var i = this.__vertices.length - 1; i >= 0; i--) {
+		if(this.__vertices[i].id === id) return this.__vertices[i];
+	};
+	return false;
+};
+
+
+/**
+ * Whether the vertex is in the graph
+ * @param  {Vertex}  vertex 
+ * @return {Mixed}        truthy vertex or false.
+ */
 Graph.prototype.has = function(vertex) {
 	for (var i = this.__vertices.length - 1; i >= 0; i--) {
 		if(this.__vertices[i].id === vertex.id) return vertex;
@@ -287,7 +357,13 @@ Graph.prototype.has = function(vertex) {
 	return false;
 };
 
+Graph.prototype.hasCycle = Graph.prototype.cyclic;
 
+
+/**
+ * The vertex at which a path loops back, i.e. the start and end point of a cycle.
+ * @return {Vertex}
+ */
 Graph.prototype.loopsAt = function(){
 	for (var i = this.__vertices.length - 1; i >= 0; i--) {
 		if(this.__vertices[i].visited && this.__vertices[i].visited > 1 ) {
@@ -297,61 +373,105 @@ Graph.prototype.loopsAt = function(){
 	return undefined;
 };
 
-Graph.prototype.vertex = function(id) {
-	for (var i = this.__vertices.length - 1; i >= 0; i--) {
-		if(this.__vertices[i].id === id) return this.__vertices[i];
-	};
-	return false;
+/**
+ * The number of vertices in the graph
+ * @return {Number} 
+ */
+Graph.prototype.order = function() {
+	return this.__vertices.length;
 };
 
+
+/**
+ * Return a path between a and b if it exists, otherwise return false.
+ * @param  {Vertex} a starting vertex
+ * @param  {Vertex} b final vertex
+ * @return {Mixed}   an ordered array of edges, or false.
+ */
 Graph.prototype.pathBetween = function ( a, b ) {
 	this.untraverse();
 	return BFS(this,a,b);
 };
 
+/**
+ * Find the vertex and remove it, if it exists.
+ * @param  {Vertex} vertex 
+ * @return {Graph}        the modified graph
+ */
 Graph.prototype.remove = function(vertex) {
-	var id = vertex.id;
+	var id = vertex.id,target;
 	if(!id) return console.error('vertex does not exist');
 	for (var i = this.__vertices.length - 1; i >= 0; i--) {
 		var outBranches = this.__vertices[i].outBranches();
 		for (var i = outBranches.length - 1; i >= 0; i--) {
 			if (outBranches[i].id ===id) {
+				target = this.findVertexById(outBranches[i].id);
+				this.removeEdge(vertex,target,outBranches[i].label);
 				outBranches.splice(i,1);
 			}
 		};
 		var key = indexOf(this.__vertices,vertex);
 		this.__vertices.splice(key, 1);
 	};
+	return this;
 };
 
+/**
+ * Find an edge and remove it.
+ * @param  {Vertex} source 
+ * @param  {Vertex} target 
+ * @param  {String} label  the edge's label
+ * @return {Graph}        
+ */
 Graph.prototype.removeEdge = function(source,target,label) {
 	for (var j = 0; j < this.__edges.length; j++) {
-		if (this.__edges[j].source()===source && this.__edges[j].target()===target && this.__edges[j].label()===label)
-			this.__edges.splice()
-	};
+		if (this.__edges[j].source()===source && this.__edges[j].target()===target && this.__edges[j].label()===label) {
+			this.__edges.splice(j,1);
+			return this;
+		}
+	}
+	return this;
 };
 
+Graph.prototype.removeVertex = Graph.prototype.remove;
+
+
+/**
+ * the number of edges in the graph
+ * @return {Number} 
+ */
 Graph.prototype.size = function(){
 	return this.__edges.length;
 }
 
-Graph.prototype.order = function() {
-	return this.__vertices.length;
-};
-
+/**
+ * Data-serializable (typically for storage but whatever you like)
+ * @return {Object} A JSON representation of the graph
+ */
 Graph.prototype.toJSON = function() {
-	return JSON.stringify(this);
+	return JSON.parse(JSON.stringify(this));
 };
 
+
+/**
+ * Remove all vertex and edge labels
+ * @return {[type]} [description]
+ */
 Graph.prototype.untraverse = function() {
 	for (var i = this.__vertices.length - 1; i >= 0; i--) {
 		this.__vertices[i].visited = false;
+		this.__vertices[i].color = undefined;
+	};
+	for (var j = 0; j < this.__edges.length; j++) {
+		this.__edges[j].type = undefined;
 	};
 	return this;
 };
+
+Graph.prototype.vertex = Graph.prototype.findVertexById;
+
 
 Graph.Edge = Edge;
 Graph.Vertex = Vertex;
 
 module.exports = Graph;
-	
