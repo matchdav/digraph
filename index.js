@@ -354,3 +354,4 @@ Graph.Edge = Edge;
 Graph.Vertex = Vertex;
 
 module.exports = Graph;
+	
