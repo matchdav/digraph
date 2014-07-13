@@ -1,6 +1,6 @@
 {
   "name": "digraph",
-  "description": "simple directed graph.",
+  "description": "directed graph.",
   "repo": "matchdav/digraph",
   "dependencies": {
     "component/clone": "*",
@@ -16,8 +16,10 @@
     "visionmedia/mocha": "*",
     "chaijs/chai": "*"
   },
-  "main": "index.js",
+  "main": "lib/graph.js",
   "scripts": [
-    "index.js"
+    "lib/graph.js",
+    "lib/vertex.js",
+    "lib/edge.js"
   ]
 }
