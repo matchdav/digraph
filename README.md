@@ -4,13 +4,9 @@
 
 ## Installation
 
-  Install with [component(1)](http://component.io):
-
-    $ component install matchdav/digraph
+    $ npm i matchdav/digraph
 
 ## API
-
-Docs and tests coming soon.
 
 ## License
 
